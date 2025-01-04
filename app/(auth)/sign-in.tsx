@@ -1,13 +1,15 @@
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import * as WebBrowser from "expo-web-browser";
-import { ThemedText } from "../../components/ThemedText";
-import { supabase } from "../../src/lib/supabase";
-import { useGameStore } from "../../src/store/gameStore";
+import { ThemedText } from "@/components/ThemedText";
+import { supabase } from "@/src/lib/supabase";
+import { useGameStore } from "@/src/store/gameStore";
+import { useRouter } from "expo-router";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignIn() {
   const { actions } = useGameStore();
+  const router = useRouter();
 
   const signInWithGoogle = async () => {
     try {
@@ -29,10 +31,19 @@ export default function SignIn() {
 
         if (result.type === "success") {
           const { url } = result;
-          await supabase.auth.setSession({
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.setSession({
             access_token: url.split("access_token=")[1].split("&")[0],
             refresh_token: url.split("refresh_token=")[1].split("&")[0],
           });
+
+          if (sessionError) throw sessionError;
+          if (session) {
+            actions.setSession(session);
+            router.replace("/(tabs)");
+          }
         }
       }
     } catch (error) {
